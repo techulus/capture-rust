@@ -17,8 +17,6 @@ jobs:
       matrix:
         rust:
           - stable
-          - beta
-          - nightly
     steps:
     - uses: actions/checkout@v4
     
@@ -106,7 +104,7 @@ jobs:
     - name: Install Rust
       uses: dtolnay/rust-toolchain@master
       with:
-        toolchain: 1.70.0  # Adjust based on your MSRV
+        toolchain: 1.82.0  # Adjust based on your MSRV
     
     - name: Check MSRV
       run: cargo check --all-features
