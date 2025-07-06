@@ -1,0 +1,23 @@
+[package]
+name = "capture-rust"
+version = "0.1.0"
+edition = "2021"
+description = "Rust SDK for capture.page - Browser automation and screenshot API"
+license = "MIT"
+repository = "https://github.com/techulus/capture-node"
+authors = ["Arjun Komath <arjunkomath@gmail.com>"]
+keywords = ["screenshot", "capture", "browser", "automation", "api"]
+categories = ["web-programming", "api-bindings"]
+
+[dependencies]
+reqwest = { version = "0.12", features = ["json"] }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+tokio = { version = "1.0", features = ["full"] }
+md5 = "0.7"
+url = "2.5"
+thiserror = "1.0"
+urlencoding = "2.1"
+
+[dev-dependencies]
+tokio-test = "0.4"
