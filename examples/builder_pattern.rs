@@ -35,8 +35,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .user_agent("CustomUserAgent/1.0")
         .build()?;
 
-    let capture = Capture::new(api_key.clone(), api_secret.clone())
-        .with_client(custom_client);
+    let capture = Capture::new(api_key.clone(), api_secret.clone()).with_client(custom_client);
 
     let content_url = capture.build_content_url("https://capture.page/", None)?;
     println!("Content URL with custom client: {}", content_url);

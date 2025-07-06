@@ -7,8 +7,8 @@ use std::time::Duration;
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let api_key =
         std::env::var("CAPTURE_KEY").expect("CAPTURE_KEY environment variable is required");
-    let api_secret = std::env::var("CAPTURE_SECRET")
-        .expect("CAPTURE_SECRET environment variable is required");
+    let api_secret =
+        std::env::var("CAPTURE_SECRET").expect("CAPTURE_SECRET environment variable is required");
 
     // Using builder pattern
     let capture = Capture::new(api_key, api_secret)
