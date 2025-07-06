@@ -26,7 +26,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("Building screenshot URL with structured options...");
     let screenshot_url =
         capture.build_screenshot_url("https://capture.page/", Some(&screenshot_options))?;
-    println!("Screenshot URL: {}", screenshot_url);
+    println!("Screenshot URL: {screenshot_url}");
 
     // Example 2: PDF with structured options
     let pdf_options = PdfOptions {
@@ -42,7 +42,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     println!("Building PDF URL with structured options...");
     let pdf_url = capture.build_pdf_url_structured("https://capture.page/", Some(&pdf_options))?;
-    println!("PDF URL: {}", pdf_url);
+    println!("PDF URL: {pdf_url}");
 
     // Example 3: Content with structured options
     let content_options = ContentOptions {
@@ -54,7 +54,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("Building content URL with structured options...");
     let content_url =
         capture.build_content_url_structured("https://capture.page/", Some(&content_options))?;
-    println!("Content URL: {}", content_url);
+    println!("Content URL: {content_url}");
 
     // Example 4: Using generic override mechanism
     let mut additional_options = HashMap::new();
@@ -78,7 +78,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("Building screenshot URL with override options...");
     let override_url =
         capture.build_screenshot_url("https://capture.page/", Some(&screenshot_with_override))?;
-    println!("Override URL: {}", override_url);
+    println!("Override URL: {override_url}");
 
     // Example 5: Metadata with generic options only
     let mut metadata_additional = HashMap::new();
@@ -94,7 +94,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("Building metadata URL with generic options...");
     let metadata_url =
         capture.build_metadata_url_structured("https://capture.page/", Some(&metadata_options))?;
-    println!("Metadata URL: {}", metadata_url);
+    println!("Metadata URL: {metadata_url}");
 
     // Example 6: Fetch screenshot with structured options
     println!("Fetching screenshot with structured options...");

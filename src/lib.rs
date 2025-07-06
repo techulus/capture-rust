@@ -518,7 +518,7 @@ impl Capture {
     }
 
     fn generate_token(&self, secret: &str, url: &str) -> String {
-        format!("{:x}", md5::compute(format!("{}{}", secret, url)))
+        format!("{:x}", md5::compute(format!("{secret}{url}")))
     }
 
     fn to_query_string(&self, options: &RequestOptions) -> String {

@@ -20,11 +20,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     println!("Building image URL...");
     let image_url = capture.build_image_url("https://capture.page/", Some(&options))?;
-    println!("Image URL: {}", image_url);
+    println!("Image URL: {image_url}");
 
     println!("Building PDF URL...");
     let pdf_url = capture.build_pdf_url("https://capture.page/", Some(&options))?;
-    println!("PDF URL: {}", pdf_url);
+    println!("PDF URL: {pdf_url}");
 
     println!("Fetching image...");
     let image_data = capture

@@ -17,7 +17,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let capture = Capture::with_options(api_key.clone(), api_secret.clone(), options);
 
     let image_url = capture.build_image_url("https://capture.page/", None)?;
-    println!("Image URL with edge: {}", image_url);
+    println!("Image URL with edge: {image_url}");
 
     // Example 2: Using builder pattern directly on Capture
     println!("\nExample 2: Builder pattern on Capture struct");
@@ -26,7 +26,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .with_timeout(Duration::from_secs(15));
 
     let pdf_url = capture.build_pdf_url("https://capture.page/", None)?;
-    println!("PDF URL with edge and timeout: {}", pdf_url);
+    println!("PDF URL with edge and timeout: {pdf_url}");
 
     // Example 3: Custom HTTP client
     println!("\nExample 3: Custom HTTP client");
@@ -38,7 +38,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let capture = Capture::new(api_key.clone(), api_secret.clone()).with_client(custom_client);
 
     let content_url = capture.build_content_url("https://capture.page/", None)?;
-    println!("Content URL with custom client: {}", content_url);
+    println!("Content URL with custom client: {content_url}");
 
     // Example 4: Chaining multiple configurations
     println!("\nExample 4: Chaining multiple configurations");
@@ -71,7 +71,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     );
 
     let metadata_url = capture.build_metadata_url("https://capture.page/", None)?;
-    println!("Metadata URL with complex setup: {}", metadata_url);
+    println!("Metadata URL with complex setup: {metadata_url}");
 
     Ok(())
 }
