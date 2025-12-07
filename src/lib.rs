@@ -26,6 +26,7 @@ pub enum RequestType {
     Pdf,
     Content,
     Metadata,
+    Animated,
 }
 
 impl RequestType {
@@ -35,6 +36,7 @@ impl RequestType {
             RequestType::Pdf => "pdf",
             RequestType::Content => "content",
             RequestType::Metadata => "metadata",
+            RequestType::Animated => "animated",
         }
     }
 }
@@ -444,6 +446,7 @@ pub struct ContentResponse {
     pub html: String,
     #[serde(rename = "textContent")]
     pub text_content: String,
+    pub markdown: String,
 }
 
 #[derive(Debug, Deserialize)]
@@ -525,10 +528,6 @@ impl Capture {
         let mut params = Vec::new();
 
         for (key, value) in options {
-            if key == "format" {
-                continue;
-            }
-
             let value_str = match value {
                 serde_json::Value::String(s) => s.clone(),
                 serde_json::Value::Number(n) => n.to_string(),
@@ -607,6 +606,10 @@ impl Capture {
         self.build_url(RequestType::Metadata, url, options)
     }
 
+    pub fn build_animated_url(&self, url: &str, options: Option<&RequestOptions>) -> Result<String> {
+        self.build_url(RequestType::Animated, url, options)
+    }
+
     // Structured options methods
     pub fn build_screenshot_url(
         &self,
@@ -682,6 +685,17 @@ impl Capture {
         let response = self.client.get(&capture_url).send().await?;
         let metadata = response.json::<MetadataResponse>().await?;
         Ok(metadata)
+    }
+
+    pub async fn fetch_animated(
+        &self,
+        url: &str,
+        options: Option<&RequestOptions>,
+    ) -> Result<Vec<u8>> {
+        let capture_url = self.build_animated_url(url, options)?;
+        let response = self.client.get(&capture_url).send().await?;
+        let bytes = response.bytes().await?;
+        Ok(bytes.to_vec())
     }
 
     // Structured options fetch methods
