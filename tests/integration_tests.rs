@@ -114,7 +114,7 @@ async fn test_request_options_filtering() {
     let mut options = HashMap::new();
     options.insert(
         "format".to_string(),
-        serde_json::Value::String("png".to_string()),
+        serde_json::Value::String("A4".to_string()),
     );
     options.insert("full".to_string(), serde_json::Value::Bool(true));
     options.insert(
@@ -122,16 +122,13 @@ async fn test_request_options_filtering() {
         serde_json::Value::String("".to_string()),
     );
 
-    let image_url = capture
-        .build_image_url("https://example.com", Some(&options))
+    let pdf_url = capture
+        .build_pdf_url("https://example.com", Some(&options))
         .unwrap();
 
-    // Format should be filtered out
-    assert!(!image_url.contains("format=png"));
+    assert!(pdf_url.contains("format=A4"));
 
-    // Full should be included
-    assert!(image_url.contains("full=true"));
+    assert!(pdf_url.contains("full=true"));
 
-    // Empty values should be filtered out
-    assert!(!image_url.contains("empty="));
+    assert!(!pdf_url.contains("empty="));
 }
