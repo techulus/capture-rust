@@ -66,6 +66,7 @@ pub struct ScreenshotOptions {
     pub block_cookie_banners: Option<bool>,
     pub block_ads: Option<bool>,
     pub bypass_bot_detection: Option<bool>,
+    pub stealth: Option<bool>,
 
     // Image Options
     pub image_type: Option<String>,
@@ -103,6 +104,7 @@ pub struct PdfOptions {
     pub scale: Option<f64>,
     pub landscape: Option<bool>,
     pub delay: Option<u32>,
+    pub stealth: Option<bool>,
 
     // Storage/Output
     pub file_name: Option<String>,
@@ -121,6 +123,7 @@ pub struct ContentOptions {
     pub delay: Option<u32>,
     pub wait_for: Option<String>,
     pub wait_for_id: Option<String>,
+    pub stealth: Option<bool>,
 
     // Generic override for any future options
     pub additional_options: Option<RequestOptions>,
@@ -128,6 +131,8 @@ pub struct ContentOptions {
 
 #[derive(Debug, Clone, Default)]
 pub struct MetadataOptions {
+    pub stealth: Option<bool>,
+
     // Generic override for any future options
     pub additional_options: Option<RequestOptions>,
 }
@@ -200,6 +205,9 @@ impl ScreenshotOptions {
                 "bypassBotDetection".to_string(),
                 serde_json::Value::Bool(bypass_bot_detection),
             );
+        }
+        if let Some(stealth) = self.stealth {
+            options.insert("stealth".to_string(), serde_json::Value::Bool(stealth));
         }
         if let Some(image_type) = &self.image_type {
             options.insert(
@@ -321,6 +329,9 @@ impl PdfOptions {
         if let Some(delay) = self.delay {
             options.insert("delay".to_string(), serde_json::Value::Number(delay.into()));
         }
+        if let Some(stealth) = self.stealth {
+            options.insert("stealth".to_string(), serde_json::Value::Bool(stealth));
+        }
         if let Some(file_name) = &self.file_name {
             options.insert(
                 "fileName".to_string(),
@@ -385,6 +396,9 @@ impl ContentOptions {
                 serde_json::Value::String(wait_for_id.clone()),
             );
         }
+        if let Some(stealth) = self.stealth {
+            options.insert("stealth".to_string(), serde_json::Value::Bool(stealth));
+        }
 
         // Merge additional options, allowing overrides
         if let Some(additional) = &self.additional_options {
@@ -400,6 +414,10 @@ impl ContentOptions {
 impl MetadataOptions {
     pub fn to_request_options(&self) -> RequestOptions {
         let mut options = RequestOptions::new();
+
+        if let Some(stealth) = self.stealth {
+            options.insert("stealth".to_string(), serde_json::Value::Bool(stealth));
+        }
 
         // Merge additional options, allowing overrides
         if let Some(additional) = &self.additional_options {

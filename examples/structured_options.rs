@@ -89,6 +89,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let metadata_options = MetadataOptions {
         additional_options: Some(metadata_additional),
+        ..Default::default()
     };
 
     println!("Building metadata URL with generic options...");
