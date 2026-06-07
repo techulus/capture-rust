@@ -1,5 +1,6 @@
-use reqwest::Client;
-use serde::Deserialize;
+use base64::{engine::general_purpose, Engine as _};
+use reqwest::{Client, Method};
+use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use std::collections::HashMap;
 use std::time::Duration;
 use thiserror::Error;
@@ -14,8 +15,18 @@ pub enum CaptureError {
     MissingCredentials,
     #[error("URL is required")]
     MissingUrl,
+    #[error("Session ID is required")]
+    MissingSessionId,
     #[error("URL should be a string")]
     InvalidUrl,
+    #[error("JSON parsing failed: {0}")]
+    JsonError(#[from] serde_json::Error),
+    #[error("{message}")]
+    SessionsApiError {
+        status: u16,
+        body: serde_json::Value,
+        message: String,
+    },
 }
 
 pub type Result<T> = std::result::Result<T, CaptureError>;
@@ -42,6 +53,9 @@ impl RequestType {
 }
 
 pub type RequestOptions = HashMap<String, serde_json::Value>;
+pub type SessionActionPayload = HashMap<String, serde_json::Value>;
+pub type SessionActionResponse = serde_json::Value;
+pub type SessionResponse = serde_json::Value;
 
 #[derive(Debug, Clone, Default)]
 pub struct ScreenshotOptions {
@@ -473,6 +487,23 @@ pub struct MetadataResponse {
     pub metadata: HashMap<String, serde_json::Value>,
 }
 
+#[derive(Debug, Clone, Default, Serialize)]
+pub struct CreateSessionOptions {
+    #[serde(rename = "maxTtlSeconds", skip_serializing_if = "Option::is_none")]
+    pub max_ttl_seconds: Option<u32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub proxy: Option<bool>,
+    #[serde(rename = "bypassBotDetection", skip_serializing_if = "Option::is_none")]
+    pub bypass_bot_detection: Option<bool>,
+}
+
+#[derive(Debug, Serialize)]
+struct SessionActionRequest<'a> {
+    #[serde(rename = "type")]
+    action_type: &'a str,
+    payload: &'a SessionActionPayload,
+}
+
 pub struct Capture {
     key: String,
     secret: String,
@@ -624,7 +655,11 @@ impl Capture {
         self.build_url(RequestType::Metadata, url, options)
     }
 
-    pub fn build_animated_url(&self, url: &str, options: Option<&RequestOptions>) -> Result<String> {
+    pub fn build_animated_url(
+        &self,
+        url: &str,
+        options: Option<&RequestOptions>,
+    ) -> Result<String> {
         self.build_url(RequestType::Animated, url, options)
     }
 
@@ -760,6 +795,134 @@ impl Capture {
         let metadata = response.json::<MetadataResponse>().await?;
         Ok(metadata)
     }
+
+    pub async fn create_session(
+        &self,
+        options: Option<&CreateSessionOptions>,
+    ) -> Result<SessionResponse> {
+        let default_options;
+        let options = match options {
+            Some(options) => options,
+            None => {
+                default_options = CreateSessionOptions::default();
+                &default_options
+            }
+        };
+
+        self.sessions_request(Method::POST, "", Some(options)).await
+    }
+
+    pub async fn get_session(&self, session_id: &str) -> Result<SessionResponse> {
+        self.sessions_request::<SessionResponse, serde_json::Value>(
+            Method::GET,
+            &format!("/{}", self.escape_session_id(session_id)?),
+            None,
+        )
+        .await
+    }
+
+    pub async fn close_session(&self, session_id: &str) -> Result<SessionResponse> {
+        self.sessions_request::<SessionResponse, serde_json::Value>(
+            Method::DELETE,
+            &format!("/{}", self.escape_session_id(session_id)?),
+            None,
+        )
+        .await
+    }
+
+    pub async fn execute_action(
+        &self,
+        session_id: &str,
+        action_type: &str,
+        payload: Option<&SessionActionPayload>,
+    ) -> Result<SessionActionResponse> {
+        let default_payload;
+        let payload = match payload {
+            Some(payload) => payload,
+            None => {
+                default_payload = SessionActionPayload::new();
+                &default_payload
+            }
+        };
+        let body = SessionActionRequest {
+            action_type,
+            payload,
+        };
+
+        self.sessions_request(
+            Method::POST,
+            &format!("/{}/actions", self.escape_session_id(session_id)?),
+            Some(&body),
+        )
+        .await
+    }
+
+    fn sessions_bearer_token(&self) -> Result<String> {
+        if self.key.is_empty() || self.secret.is_empty() {
+            return Err(CaptureError::MissingCredentials);
+        }
+
+        Ok(general_purpose::STANDARD.encode(format!("{}:{}", self.key, self.secret)))
+    }
+
+    fn session_url(&self, path: &str) -> String {
+        format!("{}/v1/sessions{path}", Self::EDGE_URL)
+    }
+
+    async fn sessions_request<T, B>(
+        &self,
+        method: Method,
+        path: &str,
+        body: Option<&B>,
+    ) -> Result<T>
+    where
+        T: DeserializeOwned,
+        B: Serialize + ?Sized,
+    {
+        let mut request = self.client.request(method, self.session_url(path)).header(
+            "Authorization",
+            format!("Bearer {}", self.sessions_bearer_token()?),
+        );
+
+        if let Some(body) = body {
+            request = request.json(body);
+        }
+
+        let response = request.send().await?;
+        let status = response.status();
+        let body_text = response.text().await?;
+
+        if !status.is_success() {
+            let body = serde_json::from_str::<serde_json::Value>(&body_text)
+                .unwrap_or_else(|_| serde_json::json!({ "error": body_text }));
+            let message = body
+                .get("error")
+                .and_then(|value| value.as_str())
+                .map(ToOwned::to_owned)
+                .unwrap_or_else(|| {
+                    format!(
+                        "Capture Sessions API request failed with status {}",
+                        status.as_u16()
+                    )
+                });
+
+            return Err(CaptureError::SessionsApiError {
+                status: status.as_u16(),
+                body,
+                message,
+            });
+        }
+
+        Ok(serde_json::from_str(&body_text)?)
+    }
+
+    fn escape_session_id(&self, session_id: &str) -> Result<String> {
+        if session_id.is_empty() {
+            return Err(CaptureError::MissingSessionId);
+        }
+
+        Ok(urlencoding::encode(session_id).into_owned())
+    }
 }
 
 #[cfg(test)]
@@ -816,5 +979,53 @@ mod tests {
         let capture = Capture::new("test_key".to_string(), "test_secret".to_string());
         let result = capture.build_image_url("", None);
         assert!(matches!(result, Err(CaptureError::MissingUrl)));
+    }
+
+    #[test]
+    fn test_sessions_bearer_token() {
+        let capture = Capture::new("user_123".to_string(), "secret".to_string());
+
+        assert_eq!(
+            capture.sessions_bearer_token().unwrap(),
+            "dXNlcl8xMjM6c2VjcmV0"
+        );
+    }
+
+    #[test]
+    fn test_session_url_uses_edge_url() {
+        let capture = Capture::new("user_123".to_string(), "secret".to_string());
+
+        assert_eq!(
+            capture.session_url("/sess_123/actions"),
+            "https://edge.capture.page/v1/sessions/sess_123/actions"
+        );
+    }
+
+    #[test]
+    fn test_session_id_escaping() {
+        let capture = Capture::new("user_123".to_string(), "secret".to_string());
+
+        assert_eq!(
+            capture.escape_session_id("sess_123/child").unwrap(),
+            "sess_123%2Fchild"
+        );
+    }
+
+    #[test]
+    fn test_create_session_options_serialization() {
+        let options = CreateSessionOptions {
+            max_ttl_seconds: Some(300),
+            proxy: Some(true),
+            bypass_bot_detection: None,
+        };
+
+        let value = serde_json::to_value(options).unwrap();
+        assert_eq!(
+            value,
+            serde_json::json!({
+                "maxTtlSeconds": 300,
+                "proxy": true
+            })
+        );
     }
 }

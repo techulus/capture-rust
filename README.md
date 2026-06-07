@@ -50,12 +50,41 @@ use capture_rust::{Capture, CaptureOptions};
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let options = CaptureOptions { use_edge: true };
+    let options = CaptureOptions::new().with_edge();
     let capture = Capture::with_options("your_api_key".to_string(), "your_api_secret".to_string(), options);
     
     let image_data = capture.fetch_image("https://capture.page/", None).await?;
     std::fs::write("edge_screenshot.png", image_data)?;
     
+    Ok(())
+}
+```
+
+### Browser Sessions
+
+```rust
+use capture_rust::{Capture, CreateSessionOptions, SessionActionPayload};
+use serde_json::json;
+
+#[tokio::main]
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let capture = Capture::new("your_api_key".to_string(), "your_api_secret".to_string());
+
+    let created = capture.create_session(Some(&CreateSessionOptions {
+        max_ttl_seconds: Some(300),
+        proxy: None,
+        bypass_bot_detection: None,
+    })).await?;
+    let session_id = created["session"]["id"]
+        .as_str()
+        .expect("session id");
+
+    let mut payload = SessionActionPayload::new();
+    payload.insert("url".to_string(), json!("https://example.com"));
+    capture.execute_action(&session_id, "goto", Some(&payload)).await?;
+
+    capture.close_session(&session_id).await?;
+
     Ok(())
 }
 ```
@@ -221,6 +250,10 @@ The main client for interacting with the capture.page API.
 - `fetch_pdf(url: &str, options: Option<&RequestOptions>) -> Result<Vec<u8>>` - Fetch PDF as bytes
 - `fetch_content(url: &str, options: Option<&RequestOptions>) -> Result<ContentResponse>` - Fetch page content
 - `fetch_metadata(url: &str, options: Option<&RequestOptions>) -> Result<MetadataResponse>` - Fetch page metadata
+- `create_session(options: Option<&CreateSessionOptions>) -> Result<SessionResponse>` - Create a browser session
+- `get_session(session_id: &str) -> Result<SessionResponse>` - Get session metadata
+- `close_session(session_id: &str) -> Result<SessionResponse>` - Close a browser session
+- `execute_action(session_id: &str, action_type: &str, payload: Option<&SessionActionPayload>) -> Result<SessionActionResponse>` - Execute a browser action
 
 ### Types
 
@@ -228,6 +261,8 @@ The main client for interacting with the capture.page API.
 - `CaptureOptions` - SDK configuration options
 - `ContentResponse` - Response from content extraction
 - `MetadataResponse` - Response from metadata extraction
+- `CreateSessionOptions` - Options for creating a browser session
+- `SessionActionPayload` - HashMap action payload for browser sessions
 - `CaptureError` - Error types for the SDK
 
 ## License

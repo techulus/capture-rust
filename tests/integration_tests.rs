@@ -1,4 +1,4 @@
-use capture_rust::{Capture, CaptureOptions};
+use capture_rust::{Capture, CaptureOptions, CreateSessionOptions, SessionActionPayload};
 use std::collections::HashMap;
 
 #[tokio::test]
@@ -131,4 +131,84 @@ async fn test_request_options_filtering() {
     assert!(pdf_url.contains("full=true"));
 
     assert!(!pdf_url.contains("empty="));
+}
+
+#[tokio::test]
+#[ignore = "requires live Capture credentials and creates a billable browser session"]
+async fn test_live_session_screenshot_example_dot_com() {
+    let key = std::env::var("CAPTURE_KEY").expect("CAPTURE_KEY is required");
+    let secret = std::env::var("CAPTURE_SECRET").expect("CAPTURE_SECRET is required");
+    let capture = Capture::new(key, secret);
+
+    let created = capture
+        .create_session(Some(&CreateSessionOptions {
+            max_ttl_seconds: Some(120),
+            proxy: None,
+            bypass_bot_detection: None,
+        }))
+        .await
+        .expect("create session");
+    let session_id = created["session"]["id"]
+        .as_str()
+        .expect("created session id")
+        .to_string();
+
+    let result = async {
+        let mut goto_payload = SessionActionPayload::new();
+        goto_payload.insert(
+            "url".to_string(),
+            serde_json::Value::String("https://example.com".to_string()),
+        );
+
+        let goto_response = capture
+            .execute_action(&session_id, "goto", Some(&goto_payload))
+            .await?;
+        assert_eq!(goto_response["success"], true);
+
+        let mut screenshot_payload = SessionActionPayload::new();
+        screenshot_payload.insert("fullPage".to_string(), serde_json::Value::Bool(true));
+
+        let screenshot_response = capture
+            .execute_action(&session_id, "screenshot", Some(&screenshot_payload))
+            .await?;
+        assert_eq!(
+            screenshot_response["success"], true,
+            "screenshot response: {screenshot_response:?}"
+        );
+
+        let screenshot = screenshot_response
+            .get("result")
+            .and_then(|result| {
+                if result.get("bodyBase64").is_some() {
+                    Some(result)
+                } else {
+                    result.get("screenshot")
+                }
+            })
+            .or_else(|| screenshot_response.get("screenshot"))
+            .or_else(|| {
+                if screenshot_response.get("bodyBase64").is_some() {
+                    Some(&screenshot_response)
+                } else {
+                    None
+                }
+            })
+            .unwrap_or_else(|| panic!("screenshot payload missing: {screenshot_response:?}"));
+
+        assert_eq!(
+            screenshot["contentType"], "image/png",
+            "screenshot response: {screenshot_response:?}"
+        );
+
+        let body_base64 = screenshot["bodyBase64"].as_str().unwrap_or("");
+        assert!(!body_base64.is_empty());
+
+        Ok::<(), capture_rust::CaptureError>(())
+    }
+    .await;
+
+    let close_result = capture.close_session(&session_id).await;
+    assert!(close_result.is_ok(), "close session: {close_result:?}");
+
+    result.expect("live session screenshot flow");
 }
