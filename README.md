@@ -72,8 +72,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let created = capture.create_session(Some(&CreateSessionOptions {
         max_ttl_seconds: Some(300),
-        proxy: None,
-        bypass_bot_detection: None,
+        ..Default::default()
     })).await?;
     let session_id = created["session"]["id"]
         .as_str()
@@ -84,6 +83,40 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     capture.execute_action(&session_id, "goto", Some(&payload)).await?;
 
     capture.close_session(&session_id).await?;
+
+    Ok(())
+}
+```
+
+#### CDP Sessions
+
+Set `cdp` to create a session that exposes a Chrome DevTools Protocol connect URL.
+The API returns this as `connectUrl`; Rust code commonly stores it as `connect_url`.
+CDP sessions cannot be combined with `proxy` or `bypassBotDetection`.
+
+```rust
+use capture_rust::{Capture, CreateSessionOptions};
+
+#[tokio::main]
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let capture = Capture::new("your_api_key".to_string(), "your_api_secret".to_string());
+
+    let created = capture.create_session(Some(&CreateSessionOptions {
+        cdp: Some(true),
+        max_ttl_seconds: Some(300),
+        ..Default::default()
+    })).await?;
+
+    let session_id = created["session"]["id"]
+        .as_str()
+        .expect("session id");
+    let connect_url = created["session"]["connectUrl"]
+        .as_str()
+        .expect("CDP connectUrl");
+
+    println!("CDP connect URL: {connect_url}");
+
+    capture.close_session(session_id).await?;
 
     Ok(())
 }
