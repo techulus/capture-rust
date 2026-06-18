@@ -145,6 +145,7 @@ async fn test_live_session_screenshot_example_dot_com() {
             max_ttl_seconds: Some(120),
             proxy: None,
             bypass_bot_detection: None,
+            cdp: None,
         }))
         .await
         .expect("create session");

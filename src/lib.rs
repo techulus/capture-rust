@@ -495,6 +495,8 @@ pub struct CreateSessionOptions {
     pub proxy: Option<bool>,
     #[serde(rename = "bypassBotDetection", skip_serializing_if = "Option::is_none")]
     pub bypass_bot_detection: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub cdp: Option<bool>,
 }
 
 #[derive(Debug, Serialize)]
@@ -1015,8 +1017,9 @@ mod tests {
     fn test_create_session_options_serialization() {
         let options = CreateSessionOptions {
             max_ttl_seconds: Some(300),
-            proxy: Some(true),
+            proxy: None,
             bypass_bot_detection: None,
+            cdp: Some(true),
         };
 
         let value = serde_json::to_value(options).unwrap();
@@ -1024,8 +1027,16 @@ mod tests {
             value,
             serde_json::json!({
                 "maxTtlSeconds": 300,
-                "proxy": true
+                "cdp": true
             })
         );
+    }
+
+    #[test]
+    fn test_create_session_options_omit_empty_serialization() {
+        let options = CreateSessionOptions::default();
+
+        let value = serde_json::to_value(options).unwrap();
+        assert_eq!(value, serde_json::json!({}));
     }
 }
